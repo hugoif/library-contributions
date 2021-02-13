@@ -1,0 +1,171 @@
+!\---------------------------------------------------------------------------
+
+	books.hug
+
+	A book object class with support routines.
+
+	(*very* slightly modified version of Kent Tessman's ob_book.hug file
+	from the Future Boy! source files)
+
+	DoConsult -	>READ BOOK ABOUT THING
+	DoReadAbout -   >READ ABOUT THING IN BOOK
+
+	Generally it's recommended to implement an after { object DoConsult }
+	block in the book, since DoReadAbout will call DoConsult anyway.
+
+Useful grammar:
+
+	verb "consult"
+		*					DoVague
+		* object "about"/"for"/"on" anything	DoConsult
+		* object				DoConsult
+
+	verb "read"
+		* "about" anything			DoReadAbout
+		* "about" anything "in" xobject		DoReadAbout
+		* "up" "on" anything "in" xobject	DoReadAbout
+		* object "about"/"for" anything		DoConsult
+
+	verb "look"
+		* "up" anything "in" xobject		DoReadAbout
+		* "up" anything				DoReadAbout
+		* anything "up" "in" xobject		DoReadAbout
+		* "in" object "about"/"for" anything	DoConsult
+
+	verb "turn"
+		* object "to" anything			DoConsult
+
+	verb "search", "scour"
+		*					DoVague
+		* object "about"/"for" anything		DoConsult
+
+	verb "research"
+		*					DoVague
+		* anything				DoReadAbout
+		* anything "in" xobject			DoReadAbout
+
+---------------------------------------------------------------------------\!
+
+class book
+{
+	type book
+	before
+	{
+		object DoOpen, DoClose
+		{
+			"There's no need to worry about doing that.  If you
+			want to look something up in the book, just do
+			so."
+		}
+	}
+	is readable, openable, open
+}
+
+routine DoConsult
+{
+!       if this routine was called by >TURN OBJECT TO XOBJECT
+!       the next couple lines check to make sure somebody isn't
+!       changing a channel if you have tvs in your game (or something similar)
+
+!	if object is dialable
+!		return Perform(&DoChange, object)
+
+	if not object
+		DoVague
+	elseif not xobject
+	{
+		"You'll have to be a little more specific about
+		what exactly you'd like to look up in ";
+		print The(object); "."
+	}
+	elseif object.type ~= book
+	{
+		CThe(object)
+		" isn't exactly a book."
+	}
+	else
+	{
+		if not object.after
+		{
+			CThe(object)
+			" doesn't seem to have anything useful in it
+			about ";
+			print The(xobject); "."
+		}
+		else
+		{
+! Handled in the chemistrybook in sc_cell.hug for now:
+!			PlaySound("book_page")
+
+		}
+	}
+}
+
+routine DoReadAbout
+{
+	if not xobject
+		xobject = FindObjectOfType(book, location)
+
+	if not xobject
+	{
+		"You'll have to be a little more specific about
+		what exactly you'd like to look that up in."
+		return false
+	}
+	else
+		return Perform(&DoConsult, xobject, object)
+}
+
+! The next routine is from Future Boy!'s misc.hug file but is required by
+! the above:
+
+! FindObjectOfType(t, location)
+! Used to find an object of type t; returns either the single available
+! object, or nothing.
+
+routine FindObjectOfType(t, loc)
+{
+	local i, obj, suspect
+
+	if loc = 0:  loc = location
+
+	for i in loc
+	{
+		if i.type = t
+		{
+			suspect = i
+		}
+		elseif children(i) and (i is not container or i is open or i is not openable)
+		{
+			obj = FindObjectOfType(t, i)
+			if obj
+			{
+				if suspect
+					! More than 1
+					return nothing
+				else
+					suspect = obj
+			}
+		}
+	}
+
+	! Only do the whole-tree check when loc is a room-level object:
+	if parent(loc) = nothing and not suspect
+	{
+		for (i=1; i<=objects; i++)
+		{
+			if i.type = t and i ~= suspect
+			{
+				if FindObject(i, location)
+				{
+					if suspect
+						! More than one
+						return nothing
+					else
+						suspect = obj
+				}
+			}
+		}
+	}
+	return suspect
+}
