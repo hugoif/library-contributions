@@ -1,0 +1,216 @@
+!----------------------------------------------------------------------------
+! Menu and context-menu management:
+!
+! Taken from misc.hug from Kent Tessman's Future Boy! Selected Source
+! files
+
+property build_menu
+global menu_count
+
+routine BuildContextMenu
+{
+! The _VERSION3 checks make sure we are compiling with a recent compiler
+! but we will just assume that we are
+!#ifset _VERSION3
+	local i, last_menu_count, char_count
+
+	ClearMenu
+
+	! General/location section:
+
+	run player.build_menu
+	run location.build_menu
+
+!	if not &location.build_menu
+!	{
+		if player not in location
+		{
+			if parent(player) is container
+				AddtoMenu("Get out")
+			else
+				AddtoMenu("Get up")
+		}
+
+		if not &location.in_to and player in location
+		{
+			if location.in_to
+				AddtoMenu("Go inside")
+		}
+		if not &location.out_to and player in location
+		{
+			if location.out_to
+				AddtoMenu("Leave")
+		}
+!	}
+
+	if menu_count > last_menu_count
+		AddtoMenu("-")
+	last_menu_count = menu_count
+
+	! Characters/NPCs section:
+
+!	We'll assume that NPCs in our game are talked to with >TALK TO CHARACTER
+!	If that is not the case, this section needs to be changed
+
+!	if use_conversations
+!	{
+		for i in location
+		{
+			if i is living and i is not hidden and i ~= player ! and
+! Future Boy! specific attributes				(i is not conversing, unconscious, sleeping, dead)
+			{
+				char_count++
+			}
+		}
+
+		if char_count > 3
+		{
+			AddtoMenu("Talk to...")
+		}
+		else
+		{
+			char_count = 0
+
+			for i in location
+			{
+				if i is living and i is not hidden and i ~= player ! and
+! Future Boy! specific attributes					(i is not conversing, unconscious, sleeping, dead)
+				{
+					local w
+
+					char_count++
+
+					! Need to do this since The(), below, may
+					! hijack current pronouns:
+					local temp_it_obj, temp_him_obj, temp_her_obj, temp_them_obj
+					temp_it_obj = it_obj
+					temp_him_obj = him_obj
+					temp_her_obj = her_obj
+					temp_them_obj = them_obj
+
+! addcontext and AddtoMenu-by-extension need to be fed a dictionary entry to work. The following
+! lines write "TALK TO <CHARACTER NAME>" to the dictionary table
+
+					! This is why we need a MAXDICTEXTEND setting;
+					! it has to be large enough to hold all the
+					! characters
+					!
+					string(_temp_string, "Talk to ")
+					text to (_temp_string + 8)
+					The(i)
+					text to 0
+					w = dict(_temp_string, 255)
+					AddtoMenu(w)
+
+					it_obj = temp_it_obj
+					him_obj = temp_him_obj
+					her_obj = temp_her_obj
+					them_obj = temp_them_obj
+				}
+			}
+		}
+!	}
+
+	! Only add this one if there's one obvious character (the speaking character)
+	! to ask about something:
+	if char_count = 1 and speaking
+		AddtoMenu("Ask about...")
+
+	for i in location
+	{
+		if i is living
+			run i.build_menu
+	}
+
+	if menu_count > last_menu_count
+		AddtoMenu("-")
+	last_menu_count = menu_count
+
+	! Objects section:
+
+	AddtoMenu("Look")
+
+	! Carried items:
+	local dropflag, invflag
+	for i in player
+	{
+		if i is not hidden
+		{
+			dropflag = true
+			invflag = true
+			run i.build_menu
+		}
+	}
+	if dropflag
+		AddtoMenu("Drop...")
+	if invflag
+		AddtoMenu("Inventory")
+
+	! Items in location:
+!  Future Boy! media code -
+!	if (DisplayHasGraphics) or 	! and objects_detailed) or
+!		(not DisplayHasGraphics and children(location) > 1)
+	! graphics-less version:
+	if children(location) > 1
+	{
+		local takeflag, examineflag
+
+		for i in location
+		{
+			if i ~= player
+			{
+				examineflag = true
+			}
+
+			if i is not living
+			{
+				takeflag = true
+			}
+		}
+
+		if takeflag
+			AddtoMenu("Take...")
+		if examineflag
+			AddtoMenu("Examine...")
+	}
+
+	if takeflag or examineflag
+		AddtoMenu("-")
+
+	! Object-specific actions
+	for i in location
+	{
+		if i is not living
+			run i.build_menu
+	}
+
+!	Uncommment if the "Menu" part below is uncommented:
+!	if menu_count > last_menu_count
+!		AddtoMenu("-")
+	last_menu_count = menu_count
+
+!	Uncomment if your game has a "Menu" command
+!	AddtoMenu("Menu")
+
+!#endif
+}
+
+
+! Use AddtoMenu instead of simply addcontext in order to increment menu_count
+! and ClearMenu to empty the menu:
+
+routine AddtoMenu(a)
+{
+!#ifset _VERSION3
+	addcontext a
+	menu_count++
+!#endif
+}
+
+routine ClearMenu(a)
+{
+!#ifset _VERSION3
+	addcontext 0
+	menu_count = 0
+!#endif
+}
