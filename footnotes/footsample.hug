@@ -1,0 +1,135 @@
+!::
+! Sample Footnote Game
+!::
+
+
+!:: Flags
+!#set HITCHHIKER_STYLE    ! If all footnotes can be called from the get-go.
+!#set HUGOFIX             ! Compile with HugoFix Debugging Library commands
+                          !   available (type $? in game)
+!#set VERBSTUBS           ! Include the grammar and routines from verbstubs.g
+                          !   and verbstubs.h, respectively
+!#set USE_ATTACHABLES     ! Use attachable items
+!#set USE_PLURAL_OBJECTS  ! Use plural objects
+!#set USE_VEHICLES        ! Use vehicle objects
+!#set VERSIONS            ! Print library versions at compile time
+
+!:: switches              ! example how one can add compiler switches to source
+!#switches -ls            ! print compilation stats to .LST file
+
+#ifset HUGOFIX
+#set DEBUG
+#endif
+
+!:: Other pre-Hugolib.h Constants
+! (some constants must be set before hugolib is included)
+
+constant GAME_TITLE "Sample Footnote Game"
+constant AUTHOR "Some Guy"
+constant RELEASE "1.0"
+!constant BLURB "An Interactive Blah"
+!constant IFID "put-IFID here"
+!constant AFTER_PERIOD " "     ! include one space after full stops (as opposed
+                               !   to two)
+!constant INDENT_SIZE 0        ! no indentation in room descriptions and room
+                               !   content listings
+
+!:: Grammar Library Inclusions (grammar must come first)
+
+! new grammar needs to be defined before the including verblib
+#include "footnotes.g"
+#include "verblib.g"        ! Verb Library
+
+#include "hugolib.h"        ! Standard  Hugo Library
+#include "footnotes.h"
+
+!::	Other Library Inclusions
+
+
+!:: Other constants and global variables
+!constant IFID "put-IFID here"
+
+!::	Game Initialization	routine
+routine init
+{
+!: First Things First
+	SetGlobalsAndFillArrays
+!: Screen clear section
+	CenterTitle("Hugo Interactive Fiction")
+	cls
+!: Game opening
+	IntroText
+	MovePlayer(location)
+}
+
+routine SetGlobalsAndFillArrays
+{
+	verbosity = 2
+	counter = -1                    ! 1 turn before turn 0
+	STATUSTYPE = 1   ! 1 = score/turns, 2 = time, 3 = moves: score:
+	TEXTCOLOR = DEF_FOREGROUND
+	BGCOLOR = DEF_BACKGROUND
+	SL_TEXTCOLOR = DEF_SL_FOREGROUND
+	SL_BGCOLOR = DEF_SL_BACKGROUND
+#if defined TITLECOLOR
+	TITLECOLOR = DEF_FOREGROUND
+#endif
+	prompt = ">"
+	DEFAULT_FONT = PROP_ON
+	display.title_caption = GAME_TITLE
+	player = you
+	location = STARTLOCATION
+}
+
+!::	Main game loop
+routine main
+{
+	counter	= counter + 1
+	run location.each_turn
+	runevents
+	RunScripts
+	if parent(speaking) ~= location
+		speaking = 0
+	PrintStatusLine
+	FootnoteNotify
+}
+
+routine IntroText
+{
+	"Intro text goes here."
+}
+
+player_character you "you"
+{
+}
+
+room STARTLOCATION "Start Location"
+{
+	long_desc
+	{
+		"Blah blah blah. ";
+		Footnote(1)
+	}
+	e_to eastroom
+}
+
+room eastroom "East Room"
+{
+	long_desc
+	{
+		"East room desciption."
+		AddFootnote(2)
+	}
+	w_to STARTLOCATION
+}
+
+routine PrintFootnote(num)
+{
+	select num
+		case 1
+			"That is an example of Footnote(#), which automatically prints
+			\"Footnote(#)\" in the game text."
+		case 2
+			"This is an example of AddFootnote(2), which prints a footnote
+			after everything else."
+}
