@@ -1,0 +1,411 @@
+!\---------------------------------------------------------------------------
+
+	plumbing.hug
+
+	Handy faucet, sink, drain, toilet, and fill_water classes for
+	plumbing, etc.
+
+---------------------------------------------------------------------------\!
+
+attribute edible
+
+property faucet_drain alias n_to	! the corresponding drain for a faucet
+property drain_faucet alias ne_to	! and vice-versa
+property filled_water alias e_to	! the water that gets moved to the container
+property normal_sink_contents 2		! probably 2 (faucet, drain)
+
+class fill_water
+{
+	type fill_water
+	nouns "water", "liquid", "fluid", "h2o"
+	article "some"
+	long_desc
+		"It's, you know, water.  The rest you can figure out for yourself."
+	size 0		! Doesn't take up any of a container's capacity
+	before
+	{
+		object DoGet
+		{
+			"You're going to have a relatively difficult time taking that."
+		}
+		object DoTouch
+		{
+			"It's wet, like water tends to be."
+		}
+	}
+}
+
+scenery faucet
+{
+	type faucet
+	article "the"
+	nouns "tap", "taps", "faucet", "faucets"
+	long_desc
+	{
+		print capital The(self); " is ";
+		if self is switchedon
+			"running."
+		else:  "turned off."
+	}
+	before
+	{
+		object DoSwitchOn, DoOpen
+		{
+			if self is switchedon
+			{
+				CThe(self)
+				" is already running."
+				return true
+			}
+			if parent(self).filled_water in parent(self)
+			{
+				CThe(parent(self))
+				" is already full."
+				return true
+			}
+
+			if children(parent(self)) > parent(self).#normal_sink_contents
+			{
+				"There's something in ";
+				The(parent(self))
+				"--you may want to take that out before filling ";
+				The(parent(self))
+				" with water."
+				return true
+			}
+
+!	Future Boy! multimedia code
+!			PlaySound("faucet")
+
+			"You turn on ";
+			print The(self); ".  ";
+			self is switchedon
+			if self.faucet_drain is not open
+			{
+				CThe(parent(self))
+				" fills with water.  You turn off ";
+				print The(self); "."
+				self is not switchedon
+				move parent(self).filled_water to parent(self)
+			}
+			else
+			{
+				"Water runs down the drain.  You turn off ";
+				print The(self); "."
+				self is not switchedon
+!\
+				print " (";
+				CThe(self)
+				" keeps running.)"
+\!
+			}
+		}
+		object DoSwitchOff, DoClose
+		{
+			if self is switchedon
+			{
+				"You turn off ";
+				print The(self); "."
+				self is not switchedon
+			}
+			else
+			{
+				CThe(self)
+				" isn't running."
+			}
+		}
+		object DoDrink
+		{
+			Perform(&DoDrink, (parent(self).filled_water))
+		}
+	}
+	is switchable, openable
+}
+
+scenery drain
+{
+	article "the"
+	type drain
+	noun "drain"
+	long_desc
+	{
+		print capital The(self); " appears to be ";
+		if self is open
+			"open."
+		else:  "closed."
+	}
+	before
+	{
+		object DoOpen
+		{
+			if self is open
+				print capital The(self); " is already open."
+			else
+			{
+				"You open ";
+				print The(self); ".  ";
+				self is open
+				if parent(self).filled_water in parent(self)
+				{
+					"The water runs away down the drain."
+					remove parent(self).filled_water
+
+!	Future Boy! multimedia code
+!				PlaySound("drain")
+				}
+				else
+					print newline
+			}
+		}
+		object DoClose
+		{
+			"You close ";
+			print The(self); ".";
+			self is not open
+			if self.drain_faucet is switchedon
+			{
+				print "  "; CThe(parent(self))
+				" fills with water.  You turn off ";
+				print The(self.drain_faucet); "."
+				self.drain_faucet is not switchedon
+				move parent(self).filled_water to parent(self)
+			}
+			print newline
+		}
+		object DoPlugIn
+		{
+			if not xobject
+				Perform(&DoClose, self)
+			else
+				return false
+		}
+	}
+	is openable, open
+}
+
+scenery sink
+{
+	type sink
+	preposition "in", "out"
+	article "the"
+	noun "sink"
+	before
+	{
+		object DoSwitchOn, DoSwitchOff
+		{
+			local f
+			for f in self
+			{
+				if f.type = faucet
+				{
+					if verbroutine = &DoFill
+						verbroutine = &DoSwitchOn
+
+					"(assuming you mean ";
+					print The(f); ")"
+					Perform(verbroutine, f)
+					return true
+				}
+			}
+			return false
+		}
+		object DoFill
+		{
+			if self.filled_water in self
+			{
+				print capital The(self) ; " is already full."
+				return true
+			}
+			elseif children(self) > self.#normal_sink_contents
+			{
+				"There's something in ";
+				The(self)
+				"--you may want to take that out before filling ";
+				The(self)
+				" with water."
+				return true
+			}
+			else
+			{
+				for f in self
+				{
+					if f.type = drain
+					{
+						print "You close "; The(f); ". ";
+						f is not open
+					}
+				}
+				for f in self
+				{
+					if f.type = faucet
+					{
+						Perform(&DoSwitchOn, f)
+						return true
+					}
+				}
+			}
+		}
+
+		object DoEmpty
+		{
+			if self.filled_water in self
+			{
+				for f in self
+				{
+					if f.type = drain
+					{
+						Perform(&DoOpen, f)
+						return true
+					}
+				}
+			}
+			else
+				return false
+		}
+		object DoOpen, DoClose
+		{
+			for f in self
+			{
+				if f.type = drain
+				{
+					"(assuming you mean ";
+					print The(f); ")"
+					Perform(verbroutine, f)
+					return true
+				}
+			}
+			ParseError(12, self)
+		}
+		xobject DoPutIn
+		{
+			if self.filled_water in self
+			{
+				"You probably don't want to do that when ";
+				The(self)
+				" is full, now, do you?"
+			}
+			else
+				return false
+		}
+	}
+	!contains_desc
+	list_contents
+		{
+		if self.filled_water in self
+			print CThe(self); " is full of water."
+		else
+			return false
+		}
+	is container, switchable, openable, open
+}
+
+scenery toilet "toilet"		! MUST have a fill_water child
+{
+	type toilet
+	preposition "in"
+	nouns "toilet", "can"
+	article "the"
+	before
+	{
+		object DoEat, DoDrink
+		{
+			"Yuck!  No, I mean really--\Byuck!\b"
+		}
+		object DoGet
+		{
+			"Trying to make off with the toilet is an...interesting
+			approach."
+		}
+		xobject DoPutIn
+		{
+			if object is edible
+				"You really, really don't want to do that with
+				something where there's even the tiniest possibility
+				that it may end up in your mouth."
+			else
+!				return false
+! For now, don't allow anything to be put in a toilet:
+				"Not much point in that unless you plan to flush it away,
+				and really, that's not particularly called for."
+		}
+		object DoFlush
+		{
+			if children(self) > 1
+				"You don't really want to flush that away, now, do you?"
+			else
+			{
+!  Future Boy! multimedia code
+!				PlaySound(SOUNDS1, "toilet")
+				"You flush the toilet.  It magically refills."
+			}
+		}
+		object DoEnter
+		{
+			"Probably not the time or the place for that."
+		}
+		object DoUse
+		{
+			"When you gotta go, you gotta go.  Luckily you don't
+			have to go right now."
+		}
+	}
+	contains_desc
+	{
+		"Floating in the toilet ";
+		if children(self) > 2	! Don't count toilet water
+			"are";
+		else:  "is";
+	}
+	is container
+	capacity 30
+	holding 0
+	is enterable
+}
+
+! stub verb routines just so that the above code works
+! they should probably all be rewritten for your game
+
+routine DoDrinkNoObject
+{
+	"What do you want to drink?"
+	return false
+}
+
+
+
+routine DoFill
+{
+	"That won't work."
+	return false
+}
+
+routine DoFlush
+{
+	"That won't flush."
+	return false
+}
+
+routine DoPlugIn
+{
+	"That won't work."
+	return false
+}
+
+! DoTouch is also in verbstub.h
+routine DoTouch
+{
+	"You feel nothing special."
+	return true
+}
+
+routine DoTouchR
+{
+	"That accomplishes nothing."
+	return true
+}
+
+routine DoUse
+{
+	"You'll have to be more specific about what you'd like to use that for."
+	return false
+}
