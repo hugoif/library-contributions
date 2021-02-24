@@ -1,7 +1,8 @@
 
+
 !\-----------------------------------------------------------------------
 Opportune.h, a Hugo library contribution for WINDOWS OF OPPORTUNITY
-version 1.4 by Jon Blask
+version 1.5 by Jon Blask
 
 This contribution lets you start different 1-turn timers for when you
 want a special response only when an action is taken directly after a
@@ -50,19 +51,7 @@ replace NewParseError(errornumber, obj)
 #set _OPPORTUNE_H
 
 #ifset VERSIONS
-#message "Opportune.h Version 1.4"
-#endif
-
-#ifset USE_EXTENSION_CREDITING
-#ifclear _ROODYLIB_H
-#message error "Extension crediting requires \"roodylib.h\". Be sure to include it first!"
-#endif
-version_obj opportune_version "Opportune Version 1.4"
-{
-	in included_extensions
-	desc_detail
-		" by Roody Yogurt";
-}
+#message "Opportune.h Version 1.5"
 #endif
 
 global current_opp ! current opportunity
@@ -107,13 +96,15 @@ routine NewQuestion(new_question)
 question egress
 {
 	long_desc
-		"Are you sure you're mentally and otherwise prepared to meet up with an egress?"
+		"Are you sure you're mentally and otherwise prepared to meet up with
+		 an egress?"
 }
 
 ! When you want to print a question, use NewQuestion, like:
 ! NewQuestion(egress)
 
-! Then, in your code, where you want to check if the player is currently being asked a question, say:
+! Then, in your code, where you want to check if the player is currently being
+!  asked a question, say:
 ! if current_opp = egress
 !     <code to execute>
 
