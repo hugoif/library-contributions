@@ -1,0 +1,53 @@
+
+
+time_object song
+{}
+
+time_object songstart
+{
+	misc 0
+}
+
+time_object timenow
+{}
+
+time_object timesince
+{}
+
+routine Jukebox
+{
+	GetCurrentTime(timenow)
+	CalculateTimeDifference(timenow, songstart, timesince)
+	if IsTimeLonger(timesince,MusicArray[songstart.misc]) or not audio.current_music
+		PlayNewSong(MusicArray)
+}
+
+routine PlayNewSong
+{
+	local y
+	if not audio.current_music
+		songstart.misc = (random(MusicArray[])) - 1 ! MusicArray[]))
+
+	while(MusicArray[songstart.misc]).name = audio.current_music
+	{
+		y = random(MusicArray[])
+		y--
+		songstart.misc = y
+	}
+
+	PlayMusic("mdata", (MusicArray[songstart.misc]).name, 0 , false, true)
+	GetCurrentTime(songstart)
+
+}
+
+routine DoSkip
+{
+	if not audio.current_music
+		"A song should not be playing right now!"
+	else
+	{
+		"Song skipped."
+		PlayNewSong
+	}
+}
+
